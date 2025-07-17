@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Integrasi Big Data Geospasial Multisumber dan Official Statistics untuk Pemetaan Kerentanan Demam Berdarah</title>
+  <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/css/mediumish.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-color: #0077b6;
+      --secondary-color: #f0f4f8;
+      --card-bg: #ffffff;
+      --text-color: #333;
+    }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      padding-top: 30px;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-color);
+      background-color: var(--secondary-color);
+    }
+
+    .mediumnavigation {
+      background: rgba(255, 255, 255, 0.03);
+      box-shadow: none;
+      z-index: 999;
+    }
+
+    .mediumnavigation .nav-link {
+      color: black !important;
+      font-size: 13px;
+    }
+
+    .mediumnavigation .nav-link:hover {
+      color: #005f8a !important;
+    }
+
+    .navbar {
+      background-color: white;
+      padding: 10px 20px;
+      color: black;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .navbar-brand img{
+      height: 36px;
+      margin-left: -22px;
+    }
+
+    .nav-item.active .nav-link {
+      font-weight: 700;
+    }
+
+    .main-layout {
+      display: flex;
+      height: calc(100vh - 55px);
+      position: relative;
+    }
+
+    .left-panel {
+      position: relative;
+      width: 320px;
+      background-color: var(--card-bg);
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+      overflow-y: auto;
+    }
+
+    .left-panel h3 {
+      margin: 0;
+      padding: 13px 13px 13px 28px;
+      background-color: var(--primary-color);
+      color: white;
+      font-size: 15px;  
+    }
+
+    .left-panel .content {
+      padding: 20px 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .left-panel label {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .left-panel select,
+    .left-panel input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 2px solid #0077b6;
+      font-size: 14px;
+      background-color: #fff;
+    }
+
+    .left-panel button {
+      width: 100%; /* supaya selebar select dan input file */
+      margin-top: 10px; /* supaya ada jarak dari atas */
+      padding: 12px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .left-panel button:hover {
+      background-color: #005f8a;
+    }
+
+    .download-template {
+      background-color: #00b4d8;
+      color: white;
+      text-decoration: none;
+      text-align: center;
+      padding: 5px;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: background 0.3s ease;
+    }
+
+    .download-template:hover {
+      background-color: #0096c7;
+    }
+
+    .accordion .card {
+      border: none;
+      background-color: #f8f9fa;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    .accordion .card-body {
+      background-color: var(--card-bg); /* Sesuaikan dengan left-panel */
+      border-top: 1px solid #ddd;
+      border-radius: 0 0 6px 6px;
+    }
+
+    .accordion .collapse {
+      background-color: var(--card-bg); /* Atur warna isi setelah dibuka */
+    }
+
+    .accordion .btn-link {
+      background-color: var(--primary-color); /* Warna tombol atas */
+      color: white !important;
+      font-weight: 600;
+      border-radius: 6px 6px 0 0;
+      text-align: left;
+    }
+
+    .instruction-box {
+      margin-top: 30px;
+      padding: 15px 15px 10px 15px;
+      background-color: #f1f5f9;
+      border-radius: 8px;
+      border: 1px solid #d0d7de;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    #map {
+      flex-grow: 1;
+      position: relative;
+    }
+
+    .legend-box {
+      position: absolute;
+      bottom: 20px;
+      left: 340px;
+      background-color: white;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      font-size: 14px;
+    }
+
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .legend-color {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1px solid #555;
+    }
+
+    .ol-popup {
+      position: absolute;
+      background-color: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      z-index: 1000;
+      font-size: 13px;
+      pointer-events: none;
+      display: none;
+    }
+
+    #status {
+      font-size: 14px;
+      color: #555;
+    }
+
+    .loading-spinner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .spinner-mosquito {
+      font-size: 48px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .help-button {
+      position: absolute;
+      left: 260px; /* sesuaikan agar menempel ke kanan .left-panel (lebar panel = 320px) */
+      bottom: 20px;
+      background-color: #0077b6;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      padding: 0;
+      z-index: 100;
+    }
+
+
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-toggleable-md navbar-light bg-white fixed-top mediumnavigation">
+  <div class="container">
+    <div class="d-flex align-items-center">
+      <a class="navbar-brand mb-0" href="index.html">
+        <img src="assets/img/logo.png" alt="logo">
+      </a>
+      <span style="margin-left:-10px; white-space: nowrap; color: #1e3a8a; font-weight: 600; font-size: 15px;">Prediksi Kerentanan DBD</span>
+    </div>
+    <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item"><a class="nav-link" href="index.html">HOME</a></li>
+        <li class="nav-item"><a class="nav-link" href="dashboard.html">DASHBOARD</a></li>
+        <li class="nav-item active"><a class="nav-link" href="halaman_prediksi.html">PREDIKSI KERENTANAN DBD</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+
+<!-- Layout -->
+<div class="main-layout">
+  <div class="left-panel">
+    <h3>📝 Lengkapi form berikut :</h3>
+    <div class="content">
+      <!-- <label for="level-select">Lengkapi Isian Berikut :</label> -->
+      <select id="level-select" required>
+        <option value="">-- Pilih Level --</option>
+        <option value="kabupaten">Kabupaten</option>
+        <option value="kecamatan">Kecamatan</option>
+        <option value="desa">Desa</option>
+        <option value="grid">Grid</option>
+      </select>
+
+      <a id="download-template" href="#" class="download-template" style="display:none;" download>📥 Download Template Excel</a>
+
+      <form id="predict-form">
+        <input type="file" id="excelFile" name="file" accept=".xlsx" required />
+        <button type="submit">Tampilkan Hasil Prediksi</button>
+      </form>
+
+      <p id="status"></p>
+      <!-- Box terpisah untuk petunjuk -->
+      <!-- <div class="instruction-box">
+        <div class="accordion" id="stepAccordion">
+          <div class="card">
+            <h2 class="mb-0">
+              <button class="btn btn-link btn-block text-left px-3 py-2" type="button"
+                data-toggle="collapse" data-target="#collapseSteps" aria-expanded="true"
+                aria-controls="collapseSteps"
+                style="text-decoration:none; color: white; font-weight: 600;">
+                📘 Cara Menggunakan Aplikasi
+              </button>
+            </h2>
+
+            <div id="collapseSteps" class="collapse" aria-labelledby="headingSteps"
+              data-parent="#stepAccordion">
+              <div class="card-body" style="font-size: 13px; color: #333;">
+                <ol class="pl-3 mb-0">
+                  <li>Pilih level wilayah</li>
+                  <li>Download template Excel</li>
+                  <li>Isi data sesuai format</li>
+                  <li>Unggah file Excel</li>
+                  <li>Klik tombol <b>Tampilkan Hasil Prediksi</b></li>
+                  <li>Lihat peta dan unduh hasil</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> -->
+    </div>
+  </div>
+  <div id="map"></div>
+
+  <!-- Tombol bantuan di pojok kanan bawah panel -->
+  <div class="help-button-container">
+    <button id="help-button" class="help-button">📢</button>
+  </div>
+</div>
+
+
+<!-- Spinner Loading Nyamuk -->
+<div id="loading-spinner" class="loading-spinner" style="display: none;">
+  <div class="spinner-mosquito">🦟</div>
+  <div class="loading-text">Memproses data...</div>
+</div>
+
+<!-- Legend -->
+<div class="legend-box" id="legend-ml" style="display: none;">
+  <div class="legend-title">Legenda</div>
+  <div class="legend-item"><div class="legend-color" style="background: #1a7f37;"></div><span>Rendah</span></div>
+  <div class="legend-item"><div class="legend-color" style="background: #f7e600;"></div><span>Sedang</span></div>
+  <div class="legend-item"><div class="legend-color" style="background: #a41e22;"></div><span>Tinggi</span></div>
+</div>
+
+<div id="popup" class="ol-popup"><div id="popup-content"></div></div>
+
+<!-- Popup bantuan -->
+<div id="help-modal" style="
+  display: none;
+  position: absolute;
+  left: 330px;
+  top: 270px;
+  width: 280px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: 10000;
+  padding: 16px;
+  font-size: 14px;
+">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <strong>📘 Cara Menjalankan Prediksi</strong>
+    <button id="close-help" style="background:none; border:none; font-size:18px; cursor:pointer;">×</button>
+  </div>
+  <ol style="margin-top: 10px; padding-left: 20px;">
+    <li>Pilih level wilayah</li>
+    <li>Download template Excel</li>
+    <li>Isi data sesuai format</li>
+    <li>Unggah file Excel</li>
+    <li>Klik tombol <b>Tampilkan Hasil Prediksi</b></li>
+    <li>Hasil visualisasi akan tampil dan file excel hasil prediksi akan otomatis terunduh</li>
+  </ol>
+</div>
+
+
+<!-- Script -->
+<script>
+  const map = new ol.Map({
+    target: 'map',
+    layers: [new ol.layer.Tile({ source: new ol.source.OSM() })],
+    view: new ol.View({
+      center: ol.proj.fromLonLat([110.3671, -7.7828]),
+      zoom: 10
+    })
+  });
+
+  let layerML;
+
+  document.getElementById('level-select').addEventListener('change', function () {
+    const level = this.value;
+    const downloadLink = document.getElementById('download-template');
+    downloadLink.style.display = level ? 'block' : 'none';
+    if (level) downloadLink.href = `template/template_${level}.xlsx`;
+  });
+
+  document.getElementById('predict-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const file = document.getElementById('excelFile').files[0];
+    const level = document.getElementById('level-select').value;
+
+    if (!file || !level) {
+      alert('Pilih level dan file terlebih dahulu.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('level', level);
+
+    // Tampilkan loading
+    document.getElementById('status').innerText = '';
+    document.getElementById('loading-spinner').style.display = 'flex';
+
+    try {
+      // === PREDIKSI GEOJSON untuk ditampilkan di peta ===
+      const resGeojson = await fetch("https://astri071003-kerentanandbd.hf.space/predict-geojson", {
+        method: 'POST',
+        body: formData
+      });
+
+      const geojson = await resGeojson.json();
+      const features = new ol.format.GeoJSON().readFeatures(geojson, {
+        dataProjection: "EPSG:4326",
+        featureProjection: "EPSG:3857"
+      });
+
+      const vectorSource = new ol.source.Vector({ features });
+
+      layerML = new ol.layer.Vector({
+        source: vectorSource,
+        visible: true,
+        style: feature => {
+          const v = feature.get("prediksi_kerentanan");
+          let color = 'gray';
+          if (v === 1) color = '#1a7f37';
+          else if (v === 2) color = '#f7e600';
+          else if (v === 3) color = '#a41e22';
+
+          return new ol.style.Style({
+            fill: new ol.style.Fill({ color }),
+            stroke: new ol.style.Stroke({ color: '#333', width: 1 })
+          });
+        }
+      });
+
+      map.getLayers().getArray()
+        .filter(layer => layer !== map.getLayers().item(0))
+        .forEach(layer => map.removeLayer(layer));
+
+      map.addLayer(layerML);
+
+      const extent = vectorSource.getExtent();
+      if (!ol.extent.isEmpty(extent)) {
+        map.getView().fit(extent, { padding: [50, 50, 50, 50], duration: 800, maxZoom: 15 });
+      }
+
+      // === AUTO DOWNLOAD EXCEL ===
+      const resExcel = await fetch("https://astri071003-kerentanandbd.hf.space/predict", {
+        method: 'POST',
+        body: formData
+      });
+
+      const blob = await resExcel.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "hasil_prediksi_kerentanan.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      document.getElementById('status').innerText = '✅ Berhasil! File berhasil diunduh.';
+      document.getElementById('legend-ml').style.display = 'block';
+
+    } catch (err) {
+      console.error(err);
+      document.getElementById('status').innerText = '❌ Error: ' + err.message;
+    } finally {
+      document.getElementById('loading-spinner').style.display = 'none';
+    }
+  });
+
+
+  const popup = document.getElementById('popup');
+  const popupContent = document.getElementById('popup-content');
+  const highlightStyle = new ol.style.Style({
+    stroke: new ol.style.Stroke({ color: '#0077b6', width: 3 }),
+    fill: new ol.style.Fill({ color: 'rgba(0, 119, 182, 0.2)' })
+  });
+
+  const highlightLayer = new ol.layer.Vector({ source: new ol.source.Vector(), map, style: highlightStyle });
+  let highlight;
+
+  map.on('pointermove', function (evt) {
+    const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
+    if (feature) {
+      const level = document.getElementById("level-select").value;
+      const v_ml = feature.get("prediksi_kerentanan");
+      let labelWilayah = "";
+
+      if (level === "grid") {
+        labelWilayah = `<b>Kecamatan:</b> ${feature.get("kecamatan") ?? "-"}<br><b>Kab/Kota:</b> ${feature.get("kabkot") ?? "-"}`;
+      } else if (level === "desa") {
+        labelWilayah = `<b>Desa:</b> ${feature.get("DESA") ?? "-"}<br><b>Kecamatan:</b> ${feature.get("KECAMATAN") ?? "-"}<br><b>Kab/Kota:</b> ${feature.get("KAB_KOTA") ?? "-"}`;
+      } else if (level === "kecamatan") {
+        labelWilayah = `<b>Kecamatan:</b> ${feature.get("Kecamatan") ?? "-"}<br><b>Kab/Kota:</b> ${feature.get("Kab_Kota") ?? "-"}`;
+      } else if (level === "kabupaten") {
+        labelWilayah = `<b>Kabupaten:</b> ${feature.get("kabupaten") ?? "-"}`;
+      }
+
+      let isi = labelWilayah;
+      if (layerML?.getVisible() && v_ml != null) {
+        const ket = v_ml === 1 ? "Rendah" : v_ml === 2 ? "Sedang" : "Tinggi";
+        isi += `<br><b>Prediksi ML:</b> ${ket}`;
+      }
+
+      popupContent.innerHTML = isi;
+      popup.style.display = 'block';
+      const pixel = map.getPixelFromCoordinate(evt.coordinate);
+      popup.style.left = pixel[0] + 15 + 'px';
+      popup.style.top = pixel[1] + 15 + 'px';
+    } else {
+      popup.style.display = 'none';
+    }
+
+    if (feature !== highlight) {
+      if (highlight) highlightLayer.getSource().removeFeature(highlight);
+      if (feature) highlightLayer.getSource().addFeature(feature);
+      highlight = feature;
+    }
+  });
+</script>
+
+<script>
+  const helpBtn = document.getElementById('help-button');
+  const helpModal = document.getElementById('help-modal');
+  const closeHelp = document.getElementById('close-help');
+
+  helpBtn.addEventListener('click', () => {
+    helpModal.style.display = helpModal.style.display === 'none' ? 'block' : 'none';
+  });
+
+  closeHelp.addEventListener('click', () => {
+    helpModal.style.display = 'none';
+  });
+
+  window.addEventListener('click', function(event) {
+    if (!helpModal.contains(event.target) && event.target !== helpBtn) {
+      helpModal.style.display = 'none';
+    }
+  });
+</script>
+<script src="assets/js/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js"></script>
+<script src="assets/js/bootstrap.min.js"></script>
+<script src="assets/js/mediumish.js"></script>
+
+</body>
+</html>
